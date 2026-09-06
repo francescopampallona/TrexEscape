@@ -574,8 +574,9 @@
 
       this.isGrounded = true;
       this.isSliding = false;
+      this.isSlideKeyHeld = false;
       this.slideTimer = 0;
-      this.maxSlideTime = 0.65; // seconds
+      this.minSlideTime = 0.2; // avoids cancelling a slide on an accidental quick tap
       this.jumpHoldTimer = 0;
       this.isJumpKeyHeld = false;
 
@@ -597,6 +598,7 @@
       this.vy = 0;
       this.isGrounded = true;
       this.isSliding = false;
+      this.isSlideKeyHeld = false;
       this.slideTimer = 0;
       this.stumbleTimer = 0;
       this.isSlowed = false;
@@ -618,7 +620,7 @@
     slide() {
       if (this.isGrounded && !this.isSliding) {
         this.isSliding = true;
-        this.slideTimer = this.maxSlideTime;
+        this.slideTimer = this.minSlideTime;
         return true;
       }
       return false;
@@ -687,13 +689,13 @@
         }
       }
 
-      // Slide countdown
+      // Stay low while the key/button is held, with a short minimum tap duration.
       if (this.isSliding) {
         this.slideTimer -= dt;
         if (Math.random() < 0.5) {
           particles.spawnDust(this.x - 10, this.groundY, 1, 'rgba(180, 150, 110, 0.4)');
         }
-        if (this.slideTimer <= 0) {
+        if (!this.isSlideKeyHeld && this.slideTimer <= 0) {
           this.isSliding = false;
         }
       }
@@ -1714,8 +1716,16 @@
 
       window.addEventListener('keyup', (e) => {
         if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
-          this.player.isJumpKeyHeld = false;
+          this.handleJumpRelease();
+        } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+          this.handleSlideRelease();
         }
+      });
+
+      // Avoid held actions getting stuck when Android interrupts or backgrounds the WebView.
+      window.addEventListener('blur', () => this.releaseHeldControls());
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) this.releaseHeldControls();
       });
 
       // UI Button Clicks
@@ -1743,34 +1753,47 @@
         this.dom.audioToggleBtn.textContent = isMuted ? '🔇' : '🔊';
       });
 
-      // Touch & Click Buttons (Mobile + Desktop Testing)
+      // Unified pointer input supports touch, mouse and simultaneous fingers.
       const bindButtonPress = (btn, onPress, onRelease) => {
-        btn.addEventListener('touchstart', (e) => {
+        let activePointerId = null;
+
+        const release = (e) => {
+          if (activePointerId === null || e.pointerId !== activePointerId) return;
           e.preventDefault();
-          onPress();
-        }, { passive: false });
-        if (onRelease) {
-          btn.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            onRelease();
-          }, { passive: false });
-        }
-        btn.addEventListener('mousedown', (e) => {
+          activePointerId = null;
+          btn.classList.remove('is-pressed');
+          if (onRelease) onRelease();
+        };
+
+        const cancel = () => {
+          if (activePointerId === null) return;
+          activePointerId = null;
+          btn.classList.remove('is-pressed');
+          if (onRelease) onRelease();
+        };
+
+        btn.addEventListener('pointerdown', (e) => {
+          if (e.pointerType === 'mouse' && e.button !== 0) return;
           e.preventDefault();
+          if (activePointerId !== null) return;
+
+          activePointerId = e.pointerId;
+          btn.classList.add('is-pressed');
+          if (btn.setPointerCapture) btn.setPointerCapture(e.pointerId);
           onPress();
         });
-        if (onRelease) {
-          btn.addEventListener('mouseup', (e) => {
-            e.preventDefault();
-            onRelease();
-          });
-        }
+        btn.addEventListener('pointerup', release);
+        btn.addEventListener('pointercancel', release);
+        btn.addEventListener('lostpointercapture', release);
+        btn.addEventListener('contextmenu', (e) => e.preventDefault());
+        window.addEventListener('blur', cancel);
+        document.addEventListener('visibilitychange', () => {
+          if (document.hidden) cancel();
+        });
       };
 
-      bindButtonPress(this.dom.touchJumpBtn, () => this.handleJumpPress(), () => {
-        this.player.isJumpKeyHeld = false;
-      });
-      bindButtonPress(this.dom.touchSlideBtn, () => this.handleSlidePress());
+      bindButtonPress(this.dom.touchJumpBtn, () => this.handleJumpPress(), () => this.handleJumpRelease());
+      bindButtonPress(this.dom.touchSlideBtn, () => this.handleSlidePress(), () => this.handleSlideRelease());
       bindButtonPress(this.dom.touchMeatBtn, () => this.throwMeat());
 
       // Click on HUD meat panel to throw
@@ -1796,19 +1819,42 @@
       if (this.state === 'PLAYING') {
         this.player.isJumpKeyHeld = true;
         if (this.player.jump()) {
+          this.pulseHaptic(12);
           this.sound.playJump();
           this.particles.spawnDust(this.player.x, this.player.y, 4);
         }
       }
     }
 
+    handleJumpRelease() {
+      this.player.isJumpKeyHeld = false;
+    }
+
     handleSlidePress() {
       this.sound.init();
       if (this.state === 'PLAYING') {
+        this.player.isSlideKeyHeld = true;
         if (this.player.slide()) {
+          this.pulseHaptic(10);
           this.sound.playSlide();
         }
       }
+    }
+
+    handleSlideRelease() {
+      this.player.isSlideKeyHeld = false;
+    }
+
+    releaseHeldControls() {
+      this.handleJumpRelease();
+      this.handleSlideRelease();
+      document.querySelectorAll('.touch-btn.is-pressed').forEach((btn) => {
+        btn.classList.remove('is-pressed');
+      });
+    }
+
+    pulseHaptic(duration = 10) {
+      if (navigator.vibrate) navigator.vibrate(duration);
     }
 
     throwMeat() {
@@ -1818,6 +1864,7 @@
       if (this.player.meatAmmo > 0) {
         this.player.meatAmmo--;
         this.meatThrownCount++;
+        this.pulseHaptic(18);
         this.sound.playMeatToss();
 
         // Spawn thrown meat moving towards the T-Rex

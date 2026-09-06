@@ -1,4 +1,4 @@
-Spostare tutti gli asset web nella cartella www
+Spostare tutti gli asset web nella cartella www\n
 **GENERAZIONE PROGETTO ANDROID CON CAPACITOR**
 npm init -y
 npm install @capacitor/core @capacitor/android

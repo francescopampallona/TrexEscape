@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>T-Rex Escape: Jurassic Chase</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="game-wrapper">
+    <!-- Danger red vignette when T-Rex is extremely close -->
+    <div id="danger-vignette"></div>
+
+    <!-- Main Game Canvas -->
+    <canvas id="gameCanvas" width="960" height="540"></canvas>
+
+    <!-- In-Game HUD -->
+    <div id="hud">
+      <div class="hud-top-bar">
+        <!-- Distance / Score Counter -->
+        <div class="hud-panel distance-panel">
+          <span class="hud-label">DISTANZA</span>
+          <span class="hud-value" id="meter-counter">0 <small>m</small></span>
+        </div>
+
+        <!-- High Score -->
+        <div class="hud-panel highscore-panel">
+          <span class="hud-label">RECORD</span>
+          <span class="hud-value" id="highscore-counter">0 <small>m</small></span>
+        </div>
+
+        <!-- Meat / Distraction Ammo -->
+        <div class="hud-panel meat-panel" id="meat-panel" title="Premi X o tocca per distrarre il T-Rex!">
+          <span class="hud-label">DISTRAZIONE [X]</span>
+          <div class="meat-icons" id="meat-icons">
+            <span class="meat-slot empty">🥩</span>
+            <span class="meat-slot empty">🥩</span>
+            <span class="meat-slot empty">🥩</span>
+          </div>
+        </div>
+
+        <!-- Speed multiplier -->
+        <div class="hud-panel speed-panel">
+          <span class="hud-label">VELOCITÀ</span>
+          <span class="hud-value" id="speed-indicator">1.0x</span>
+        </div>
+
+        <!-- Audio & Pause buttons -->
+        <div class="hud-panel controls-panel">
+          <button id="audio-toggle-btn" class="icon-btn" title="Attiva/Disattiva Audio">🔊</button>
+          <button id="pause-btn" class="icon-btn" title="Pausa (P)">⏸️</button>
+        </div>
+      </div>
+
+      <!-- T-Rex Proximity Bar (Bottom Bar) -->
+      <div class="proximity-container">
+        <div class="proximity-label">
+          <span>🦖 T-REX</span>
+          <span id="proximity-status">DISTANZA DI SICUREZZA</span>
+          <span>🏃 TU</span>
+        </div>
+        <div class="proximity-bar-wrapper">
+          <div class="proximity-track">
+            <div id="proximity-indicator-rex" class="rex-icon">🦖</div>
+            <div id="proximity-indicator-player" class="player-icon">🏃</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Start Overlay Screen -->
+    <div id="start-screen" class="modal-screen active">
+      <div class="modal-card">
+        <div class="prehistoric-badge">ARCADE SURVIVAL</div>
+        <h1 class="game-title">T-REX ESCAPE</h1>
+        <p class="game-subtitle">Jurassic Chase</p>
+        
+        <div class="story-box">
+          <p>Un feroce <strong>Tirannosauro Rex</strong> ti ha fiutato nella giungla giurassica! Corri il più lontano possibile e schiva ogni pericolo!</p>
+        </div>
+
+        <div class="instructions-grid">
+          <div class="instruction-item">
+            <div class="key-badge">W / ↑ / SPAZIO</div>
+            <span><strong>SALTA</strong> (Rocce e pozzanghere di fango)</span>
+          </div>
+          <div class="instruction-item">
+            <div class="key-badge">S / ↓</div>
+            <span><strong>SCIVOLA</strong> (Pterodattili in volo)</span>
+          </div>
+          <div class="instruction-item">
+            <div class="key-badge">X / Tasto Bistecca</div>
+            <span><strong>LANCIA CARNE</strong> (Distrae il T-Rex)</span>
+          </div>
+          <div class="instruction-item warning-item">
+            <div class="warning-icon">⚠️</div>
+            <span>Le <strong>pozzanghere di fango</strong> ti rallentano e faranno avvicinare il T-Rex!</span>
+          </div>
+        </div>
+
+        <button id="start-btn" class="cta-button">INIZIA LA FUGA</button>
+        <p class="quick-hint">Premi <strong>SPAZIO</strong> per iniziare</p>
+      </div>
+    </div>
+
+    <!-- Pause Overlay Screen -->
+    <div id="pause-screen" class="modal-screen">
+      <div class="modal-card mini-card">
+        <h2>GIOCO IN PAUSA</h2>
+        <p>Prenditi un respiro, il T-Rex sta aspettando...</p>
+        <button id="resume-btn" class="cta-button">RIPRENDI</button>
+      </div>
+    </div>
+
+    <!-- Game Over Overlay Screen -->
+    <div id="gameover-screen" class="modal-screen">
+      <div class="modal-card">
+        <div class="death-badge" id="death-reason-badge">PRESO!</div>
+        <h2 class="gameover-title">SEI STATO DIVORATO!</h2>
+        
+        <div class="gameover-stats">
+          <div class="stat-box">
+            <span class="stat-title">Distanza percorsa</span>
+            <span class="stat-number" id="final-meters">0 m</span>
+          </div>
+          <div class="stat-box" id="new-record-box">
+            <span class="stat-title">Record personale</span>
+            <span class="stat-number highlight" id="final-highscore">0 m</span>
+            <div id="new-record-banner" class="record-badge hidden">NUOVO RECORD! 🏆</div>
+          </div>
+        </div>
+
+        <div class="extra-stats-bar">
+          <span>🥩 Carne lanciata: <strong id="stats-meat">0</strong></span>
+          <span>💎 Ambre raccolte: <strong id="stats-gems">0</strong></span>
+        </div>
+
+        <button id="restart-btn" class="cta-button pulse-btn">CORRI DI NUOVO</button>
+        <p class="quick-hint">Premi <strong>SPAZIO</strong> per riprovare</p>
+      </div>
+    </div>
+
+    <!-- Virtual On-Screen Controls for Mobile / Touch -->
+    <div id="mobile-controls">
+      <div class="mobile-left">
+        <button id="touch-slide-btn" class="touch-btn touch-slide" aria-label="Scivola">
+          <span class="touch-icon">⬇️</span>
+          <span class="touch-text">SCIVOLA</span>
+        </button>
+      </div>
+      <div class="mobile-right">
+        <button id="touch-meat-btn" class="touch-btn touch-meat" aria-label="Lancia Carne">
+          <span class="touch-icon">🥩</span>
+          <span class="touch-text">DISTRAI</span>
+          <span class="touch-badge" id="touch-meat-count">0</span>
+        </button>
+        <button id="touch-jump-btn" class="touch-btn touch-jump" aria-label="Salta">
+          <span class="touch-icon">⬆️</span>
+          <span class="touch-text">SALTA</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>

@@ -1,0 +1,873 @@
+/* ==========================================================================
+   T-REX ESCAPE: JURASSIC CHASE - STYLESHEET
+   ========================================================================== */
+
+:root {
+  --color-bg: #0d130e;
+  --color-primary: #ffaa00;
+  --color-primary-glow: rgba(255, 170, 0, 0.4);
+  --color-danger: #ff3344;
+  --color-danger-glow: rgba(255, 51, 68, 0.6);
+  --color-success: #33ee77;
+  --color-jungle-dark: #142217;
+  --color-jungle-card: rgba(18, 30, 22, 0.92);
+  --color-jungle-border: #2a4c33;
+  --font-retro: 'Press Start 2P', monospace;
+  --font-ui: 'Chakra Petch', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+body, html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--color-bg);
+  font-family: var(--font-ui);
+  color: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* --------------------------------------------------------------------------
+   Game Wrapper & Canvas
+   -------------------------------------------------------------------------- */
+#game-wrapper {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  max-width: 1280px;
+  max-height: 720px;
+  aspect-ratio: 16 / 9;
+  background-color: #1a1a24;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 170, 0, 0.15);
+  border-radius: 8px;
+}
+
+@media (max-width: 1280px) or (max-height: 720px) {
+  #game-wrapper {
+    width: 100vw;
+    height: 56.25vw; /* 16:9 ratio */
+    max-height: 100vh;
+    max-width: 177.77vh;
+    border-radius: 0;
+  }
+}
+
+#gameCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background: #000;
+}
+
+/* --------------------------------------------------------------------------
+   Danger Vignette Effect (Pulsing Red when T-Rex is close)
+   -------------------------------------------------------------------------- */
+#danger-vignette {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  background: radial-gradient(circle, transparent 50%, rgba(255, 30, 30, 0.7) 100%);
+}
+
+#danger-vignette.danger-high {
+  opacity: 0.85;
+  animation: pulse-danger 0.5s infinite alternate;
+}
+
+#danger-vignette.danger-medium {
+  opacity: 0.45;
+  animation: pulse-danger 1s infinite alternate;
+}
+
+@keyframes pulse-danger {
+  0% { transform: scale(1); opacity: 0.4; }
+  100% { transform: scale(1.02); opacity: 0.85; }
+}
+
+/* --------------------------------------------------------------------------
+   HUD Elements
+   -------------------------------------------------------------------------- */
+#hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 16px 20px;
+}
+
+.hud-top-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.hud-panel {
+  background: rgba(10, 18, 12, 0.82);
+  border: 1.5px solid var(--color-jungle-border);
+  backdrop-filter: blur(6px);
+  padding: 6px 14px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+
+.hud-label {
+  font-size: 0.65rem;
+  letter-spacing: 1.2px;
+  font-weight: 700;
+  color: #7da585;
+  text-transform: uppercase;
+}
+
+.hud-value {
+  font-family: var(--font-retro);
+  font-size: 1rem;
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+
+.distance-panel .hud-value {
+  color: var(--color-primary);
+  text-shadow: 0 0 10px var(--color-primary-glow);
+}
+
+.distance-panel .hud-value small {
+  font-size: 0.65rem;
+  color: #ffd077;
+}
+
+.highscore-panel .hud-value {
+  color: #aaeebb;
+}
+
+.highscore-panel .hud-value small {
+  font-size: 0.65rem;
+}
+
+.meat-panel {
+  pointer-events: auto;
+  cursor: pointer;
+  transition: transform 0.1s, border-color 0.2s;
+}
+
+.meat-panel:hover {
+  border-color: var(--color-primary);
+}
+
+.meat-icons {
+  display: flex;
+  gap: 6px;
+  margin-top: 2px;
+  font-size: 1.1rem;
+}
+
+.meat-slot.empty {
+  filter: grayscale(100%) opacity(30%);
+}
+
+.meat-slot.active {
+  filter: none;
+  animation: bounce-meat 1.5s infinite ease-in-out;
+}
+
+@keyframes bounce-meat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.speed-panel .hud-value {
+  color: #64d2ff;
+}
+
+.controls-panel {
+  margin-left: auto;
+  flex-direction: row;
+  gap: 8px;
+  padding: 4px 8px;
+  pointer-events: auto;
+}
+
+.icon-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 1.1rem;
+  width: 38px;
+  height: 38px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+  transform: scale(1.05);
+}
+
+.icon-btn:active {
+  transform: scale(0.95);
+}
+
+/* --------------------------------------------------------------------------
+   T-Rex Proximity Tracker (Bottom HUD)
+   -------------------------------------------------------------------------- */
+.proximity-container {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  background: rgba(12, 20, 14, 0.85);
+  border: 1.5px solid var(--color-jungle-border);
+  backdrop-filter: blur(6px);
+  padding: 6px 14px;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+}
+
+.proximity-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #92b899;
+  margin-bottom: 4px;
+}
+
+#proximity-status {
+  font-family: var(--font-retro);
+  font-size: 0.6rem;
+  color: var(--color-success);
+  transition: color 0.3s;
+}
+
+#proximity-status.status-danger {
+  color: var(--color-danger);
+  animation: blink-status 0.35s infinite alternate;
+}
+
+@keyframes blink-status {
+  0% { opacity: 0.4; }
+  100% { opacity: 1; }
+}
+
+.proximity-bar-wrapper {
+  position: relative;
+  height: 16px;
+  background: #1e3323;
+  border-radius: 8px;
+  border: 1px solid #3d6b46;
+  overflow: visible;
+}
+
+.proximity-track {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.rex-icon, .player-icon {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.2rem;
+  line-height: 1;
+  transition: left 0.15s ease-out;
+}
+
+.rex-icon {
+  left: 0%;
+  z-index: 2;
+  filter: drop-shadow(0 0 4px rgba(255, 51, 68, 0.8));
+}
+
+.player-icon {
+  right: 6px;
+  z-index: 1;
+}
+
+/* --------------------------------------------------------------------------
+   Modal Screens (Start, Pause, GameOver)
+   -------------------------------------------------------------------------- */
+.modal-screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(10, 16, 12, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  padding: 20px;
+}
+
+.modal-screen.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-card {
+  background: var(--color-jungle-card);
+  border: 2px solid var(--color-jungle-border);
+  border-radius: 12px;
+  padding: 28px 36px;
+  max-width: 580px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8), 0 0 25px rgba(255, 170, 0, 0.1);
+  animation: card-appear 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.modal-card.mini-card {
+  max-width: 400px;
+  padding: 30px;
+}
+
+@keyframes card-appear {
+  0% { transform: scale(0.9) translateY(20px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.prehistoric-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-family: var(--font-retro);
+  background: rgba(255, 170, 0, 0.2);
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  padding: 4px 10px;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  letter-spacing: 1.5px;
+}
+
+.game-title {
+  font-family: var(--font-retro);
+  font-size: 2rem;
+  color: #ffaa00;
+  text-shadow: 3px 3px 0px #b33900, 0 0 20px rgba(255, 170, 0, 0.6);
+  letter-spacing: 1.5px;
+  line-height: 1.2;
+}
+
+.game-subtitle {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #8ed49e;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.story-box {
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 0.92rem;
+  color: #d6e8d9;
+  line-height: 1.45;
+  margin-bottom: 20px;
+  border-left: 3px solid var(--color-primary);
+}
+
+.instructions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  text-align: left;
+  margin-bottom: 24px;
+}
+
+.instruction-item {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.instruction-item.warning-item {
+  grid-column: span 2;
+  flex-direction: row;
+  align-items: center;
+  background: rgba(255, 51, 68, 0.1);
+  border-color: rgba(255, 51, 68, 0.3);
+  color: #ff9999;
+}
+
+.warning-icon {
+  font-size: 1.3rem;
+  margin-right: 8px;
+}
+
+.key-badge {
+  font-family: var(--font-retro);
+  font-size: 0.65rem;
+  color: var(--color-primary);
+  background: rgba(0, 0, 0, 0.5);
+  display: inline-block;
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 170, 0, 0.4);
+  width: fit-content;
+}
+
+.cta-button {
+  width: 100%;
+  background: linear-gradient(180deg, #ffb300 0%, #ff7700 100%);
+  border: 2px solid #ffe680;
+  color: #210d00;
+  font-family: var(--font-retro);
+  font-size: 1rem;
+  padding: 14px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 6px 0 #993d00, 0 10px 20px rgba(0,0,0,0.5);
+  transition: all 0.1s ease;
+  letter-spacing: 1px;
+}
+
+.cta-button:hover {
+  filter: brightness(1.1);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 0 #993d00, 0 12px 25px rgba(255, 170, 0, 0.4);
+}
+
+.cta-button:active {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 #993d00;
+}
+
+.pulse-btn {
+  animation: pulse-button 1.5s infinite alternate;
+}
+
+@keyframes pulse-button {
+  0% { box-shadow: 0 6px 0 #993d00, 0 0 10px rgba(255, 170, 0, 0.3); }
+  100% { box-shadow: 0 6px 0 #993d00, 0 0 25px rgba(255, 170, 0, 0.8); }
+}
+
+.quick-hint {
+  font-size: 0.75rem;
+  color: #92b899;
+  margin-top: 10px;
+}
+
+/* --------------------------------------------------------------------------
+   Game Over Specifics
+   -------------------------------------------------------------------------- */
+.death-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-family: var(--font-retro);
+  background: var(--color-danger);
+  color: #fff;
+  padding: 5px 12px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  text-shadow: 1px 1px 2px #000;
+  letter-spacing: 1px;
+}
+
+.gameover-title {
+  font-family: var(--font-retro);
+  font-size: 1.5rem;
+  color: #ff4455;
+  text-shadow: 2px 2px 0 #660000, 0 0 15px var(--color-danger-glow);
+  margin-bottom: 20px;
+  line-height: 1.3;
+}
+
+.gameover-stats {
+  display: flex;
+  justify-content: space-around;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.stat-box {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--color-jungle-border);
+  padding: 12px 14px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.stat-title {
+  font-size: 0.75rem;
+  color: #8bb392;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  font-weight: 700;
+}
+
+.stat-number {
+  font-family: var(--font-retro);
+  font-size: 1.3rem;
+  color: #fff;
+}
+
+.stat-number.highlight {
+  color: var(--color-primary);
+}
+
+.record-badge {
+  position: absolute;
+  top: -10px;
+  background: #ffcc00;
+  color: #402800;
+  font-family: var(--font-retro);
+  font-size: 0.55rem;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-weight: bold;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+
+.record-badge.hidden {
+  display: none;
+}
+
+.extra-stats-bar {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  font-size: 0.85rem;
+  color: #b7dbbd;
+  margin-bottom: 24px;
+  padding: 6px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 6px;
+}
+
+/* --------------------------------------------------------------------------
+   Mobile / Touch Controls
+   -------------------------------------------------------------------------- */
+#mobile-controls {
+  position: absolute;
+  bottom: 15px;
+  left: 0;
+  width: 100%;
+  padding: 0 20px;
+  display: none; /* activated on touch devices or small screens */
+  justify-content: space-between;
+  align-items: flex-end;
+  pointer-events: none;
+  z-index: 30;
+}
+
+@media (pointer: coarse) or (max-width: 820px) {
+  #mobile-controls {
+    display: flex;
+  }
+}
+
+.mobile-left, .mobile-right {
+  display: flex;
+  gap: 12px;
+  pointer-events: auto;
+}
+
+.touch-btn {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(20, 36, 24, 0.85);
+  border: 2px solid #4a8057;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  touch-action: manipulation;
+  user-select: none;
+  position: relative;
+  transition: transform 0.08s, background 0.08s;
+}
+
+.touch-btn:active {
+  transform: scale(0.92);
+  background: rgba(45, 75, 52, 0.95);
+  border-color: var(--color-primary);
+}
+
+.touch-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.touch-text {
+  font-size: 0.6rem;
+  font-weight: 700;
+  margin-top: 2px;
+  letter-spacing: 0.5px;
+}
+
+.touch-jump {
+  width: 80px;
+  height: 80px;
+  background: rgba(40, 70, 48, 0.9);
+  border-color: #5bb371;
+}
+
+.touch-meat {
+  width: 65px;
+  height: 65px;
+}
+
+.touch-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: var(--color-primary);
+  color: #000;
+  font-family: var(--font-retro);
+  font-size: 0.6rem;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+/* --------------------------------------------------------------------------
+   Compact and accessible layout for touch devices / short screens
+   -------------------------------------------------------------------------- */
+@media (pointer: coarse), (max-width: 820px) {
+  #hud {
+    padding: 6px 8px 74px;
+  }
+
+  .hud-top-bar {
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+
+  .hud-panel {
+    min-width: 0;
+    padding: 3px 6px;
+    border-width: 1px;
+  }
+
+  .hud-label {
+    font-size: 0.48rem;
+    letter-spacing: 0.35px;
+  }
+
+  .hud-value {
+    font-size: 0.7rem;
+  }
+
+  .meat-panel {
+    display: none;
+  }
+
+  .controls-panel {
+    gap: 4px;
+    padding: 2px 4px;
+  }
+
+  .icon-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 0.85rem;
+  }
+
+  .proximity-container {
+    max-width: 280px;
+    padding: 3px 8px;
+  }
+
+  .proximity-label {
+    margin-bottom: 2px;
+    font-size: 0.52rem;
+  }
+
+  #proximity-status {
+    max-width: 65%;
+    overflow: hidden;
+    font-size: 0.45rem;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .proximity-bar-wrapper {
+    height: 12px;
+  }
+
+  .rex-icon,
+  .player-icon {
+    font-size: 0.95rem;
+  }
+
+  #mobile-controls {
+    bottom: 8px;
+    padding: 0 10px;
+  }
+
+  .mobile-left,
+  .mobile-right {
+    gap: 8px;
+  }
+
+  .touch-btn {
+    width: 56px;
+    height: 56px;
+  }
+
+  .touch-jump {
+    width: 60px;
+    height: 60px;
+  }
+
+  .touch-meat {
+    width: 52px;
+    height: 52px;
+  }
+
+  .touch-icon {
+    font-size: 1.1rem;
+  }
+
+  .touch-text {
+    font-size: 0.48rem;
+  }
+
+  .touch-badge {
+    width: 18px;
+    height: 18px;
+    font-size: 0.5rem;
+  }
+}
+
+/* In portrait mode the unused space below the 16:9 game becomes the control deck. */
+@media (pointer: coarse) and (max-aspect-ratio: 4 / 3),
+       (max-width: 820px) and (max-aspect-ratio: 4 / 3) {
+  #hud {
+    padding-bottom: 6px;
+  }
+
+  #mobile-controls {
+    position: fixed;
+    bottom: max(12px, env(safe-area-inset-bottom));
+  }
+}
+
+/* Modal content remains reachable even when it is taller than the game canvas. */
+@media (max-width: 820px), (max-height: 600px) {
+  .modal-screen {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    padding: 12px;
+    align-items: flex-start;
+    justify-content: flex-start;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .modal-card,
+  .modal-card.mini-card {
+    flex: 0 0 auto;
+    margin: auto;
+    padding: 18px 20px;
+  }
+
+  .prehistoric-badge {
+    margin-bottom: 7px;
+  }
+
+  .game-title {
+    font-size: 1.45rem;
+  }
+
+  .game-subtitle {
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+  }
+
+  .story-box {
+    margin-bottom: 10px;
+    padding: 8px 10px;
+    font-size: 0.8rem;
+  }
+
+  .instructions-grid {
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .instruction-item {
+    padding: 6px 8px;
+    font-size: 0.75rem;
+  }
+
+  .cta-button {
+    padding: 10px 14px;
+    font-size: 0.8rem;
+  }
+
+  .quick-hint {
+    margin-top: 6px;
+  }
+
+  .gameover-title {
+    margin-bottom: 12px;
+  }
+
+  .gameover-stats {
+    margin-bottom: 10px;
+  }
+
+  .extra-stats-bar {
+    margin-bottom: 12px;
+  }
+}

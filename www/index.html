@@ -84,15 +84,24 @@
 
         <div class="instructions-grid">
           <div class="instruction-item">
-            <div class="key-badge">W / ↑ / SPAZIO</div>
+            <div class="key-badge">
+              <span class="desktop-command">W / ↑ / SPAZIO</span>
+              <span class="touch-command">SCORRI ↑</span>
+            </div>
             <span><strong>SALTA</strong> (Rocce e pozzanghere di fango)</span>
           </div>
           <div class="instruction-item">
-            <div class="key-badge">S / ↓</div>
+            <div class="key-badge">
+              <span class="desktop-command">S / ↓</span>
+              <span class="touch-command">SCORRI ↓</span>
+            </div>
             <span><strong>SCIVOLA</strong> (Pterodattili in volo)</span>
           </div>
           <div class="instruction-item">
-            <div class="key-badge">X / Tasto Bistecca</div>
+            <div class="key-badge">
+              <span class="desktop-command">X / Tasto Bistecca</span>
+              <span class="touch-command">TASTO 🥩</span>
+            </div>
             <span><strong>LANCIA CARNE</strong> (Distrae il T-Rex)</span>
           </div>
           <div class="instruction-item warning-item">
@@ -143,27 +152,19 @@
       </div>
     </div>
 
-    <!-- Virtual On-Screen Controls for Mobile / Touch -->
-    <div id="mobile-controls">
-      <div class="mobile-left">
-        <button id="touch-slide-btn" class="touch-btn touch-slide" type="button" aria-label="Scivola, tieni premuto">
-          <span class="touch-icon">⬇️</span>
-          <span class="touch-text">SCIVOLA</span>
-          <span class="touch-hint">TIENI</span>
-        </button>
-      </div>
-      <div class="mobile-right">
-        <button id="touch-meat-btn" class="touch-btn touch-meat" type="button" aria-label="Lancia carne">
-          <span class="touch-icon">🥩</span>
-          <span class="touch-text">DISTRAI</span>
-          <span class="touch-badge" id="touch-meat-count">0</span>
-        </button>
-        <button id="touch-jump-btn" class="touch-btn touch-jump" type="button" aria-label="Salta">
-          <span class="touch-icon">⬆️</span>
-          <span class="touch-text">SALTA</span>
-        </button>
-      </div>
+  </div>
+
+  <!-- Kept outside the game wrapper so Android WebView cannot clip it. -->
+  <div id="mobile-controls">
+    <div id="gesture-guide" aria-hidden="true">
+      <span>↑ SCORRI: SALTA</span>
+      <span>↓ SCORRI: CHINATI</span>
     </div>
+    <button id="touch-meat-btn" class="touch-btn touch-meat" type="button" aria-label="Lancia carne">
+      <span class="touch-icon">🥩</span>
+      <span class="touch-text">LANCIA</span>
+      <span class="touch-badge" id="touch-meat-count">0</span>
+    </button>
   </div>
 
   <script src="game.js"></script>

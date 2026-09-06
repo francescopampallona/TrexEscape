@@ -8,6 +8,16 @@
 (function () {
   'use strict';
 
+  // Capacitor/emulators can expose desktop-like media-query values. Detect the
+  // native/mobile environment independently so touch UI is never hidden there.
+  const capacitorNative = Boolean(
+    window.Capacitor &&
+    typeof window.Capacitor.isNativePlatform === 'function' &&
+    window.Capacitor.isNativePlatform()
+  );
+  const nativeMobile = capacitorNative || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (nativeMobile) document.documentElement.classList.add('native-mobile');
+
   // --- AUDIO SYNTHESIZER (Web Audio API - No External Files) ---
   class SoundController {
     constructor() {
@@ -576,7 +586,7 @@
       this.isSliding = false;
       this.isSlideKeyHeld = false;
       this.slideTimer = 0;
-      this.minSlideTime = 0.2; // avoids cancelling a slide on an accidental quick tap
+      this.minSlideTime = 0.55; // a quick downward swipe still lasts long enough to dodge
       this.jumpHoldTimer = 0;
       this.isJumpKeyHeld = false;
 
@@ -1634,6 +1644,7 @@
 
       // Screen Shake
       this.screenShake = 0;
+      this.gestureGuideTimer = null;
 
       // UI Element Bindings
       this.initDOMElements();
@@ -1672,10 +1683,9 @@
         statsGems: document.getElementById('stats-gems'),
         deathReasonBadge: document.getElementById('death-reason-badge'),
 
-        touchJumpBtn: document.getElementById('touch-jump-btn'),
-        touchSlideBtn: document.getElementById('touch-slide-btn'),
         touchMeatBtn: document.getElementById('touch-meat-btn'),
-        touchMeatCount: document.getElementById('touch-meat-count')
+        touchMeatCount: document.getElementById('touch-meat-count'),
+        gestureGuide: document.getElementById('gesture-guide')
       };
 
       this.dom.highScoreCounter.innerHTML = `${this.highScore} <small>m</small>`;
@@ -1792,8 +1802,6 @@
         });
       };
 
-      bindButtonPress(this.dom.touchJumpBtn, () => this.handleJumpPress(), () => this.handleJumpRelease());
-      bindButtonPress(this.dom.touchSlideBtn, () => this.handleSlidePress(), () => this.handleSlideRelease());
       bindButtonPress(this.dom.touchMeatBtn, () => this.throwMeat());
 
       // Click on HUD meat panel to throw
@@ -1802,11 +1810,66 @@
         meatPanel.addEventListener('click', () => this.throwMeat());
       }
 
-      // Direct canvas click/tap for jump on start or playing
+      // Vertical swipe controls: swipe up to jump, swipe down to slide/crouch.
+      let activeSwipe = null;
+
+      const cancelSwipe = () => {
+        if (!activeSwipe) return;
+        if (activeSwipe.action === 'jump') this.handleJumpRelease();
+        if (activeSwipe.action === 'slide') this.handleSlideRelease();
+        activeSwipe = null;
+      };
+
       this.canvas.addEventListener('pointerdown', (e) => {
         if (this.state === 'START' || this.state === 'GAMEOVER') {
           this.startGame();
+          return;
         }
+
+        if (this.state !== 'PLAYING' || e.pointerType === 'mouse' || activeSwipe) return;
+
+        e.preventDefault();
+        activeSwipe = {
+          pointerId: e.pointerId,
+          startX: e.clientX,
+          startY: e.clientY,
+          action: null
+        };
+        if (this.canvas.setPointerCapture) this.canvas.setPointerCapture(e.pointerId);
+      });
+
+      this.canvas.addEventListener('pointermove', (e) => {
+        if (!activeSwipe || e.pointerId !== activeSwipe.pointerId || activeSwipe.action) return;
+
+        e.preventDefault();
+        const deltaX = e.clientX - activeSwipe.startX;
+        const deltaY = e.clientY - activeSwipe.startY;
+        const threshold = Math.max(36, Math.min(64, this.canvas.clientHeight * 0.09));
+
+        if (Math.abs(deltaY) < threshold || Math.abs(deltaY) <= Math.abs(deltaX) * 1.15) return;
+
+        if (deltaY < 0) {
+          activeSwipe.action = 'jump';
+          this.handleJumpPress();
+        } else {
+          activeSwipe.action = 'slide';
+          this.handleSlidePress();
+        }
+        this.hideGestureGuide();
+      });
+
+      const finishSwipe = (e) => {
+        if (!activeSwipe || e.pointerId !== activeSwipe.pointerId) return;
+        e.preventDefault();
+        cancelSwipe();
+      };
+
+      this.canvas.addEventListener('pointerup', finishSwipe);
+      this.canvas.addEventListener('pointercancel', finishSwipe);
+      this.canvas.addEventListener('lostpointercapture', finishSwipe);
+      window.addEventListener('blur', cancelSwipe);
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) cancelSwipe();
       });
     }
 
@@ -1855,6 +1918,21 @@
 
     pulseHaptic(duration = 10) {
       if (navigator.vibrate) navigator.vibrate(duration);
+    }
+
+    showGestureGuide() {
+      const touchLayout = document.documentElement.classList.contains('native-mobile') ||
+        window.matchMedia('(pointer: coarse), (max-width: 820px)').matches;
+      if (!this.dom.gestureGuide || !touchLayout) return;
+      window.clearTimeout(this.gestureGuideTimer);
+      this.dom.gestureGuide.classList.add('visible');
+      this.gestureGuideTimer = window.setTimeout(() => this.hideGestureGuide(), 4500);
+    }
+
+    hideGestureGuide() {
+      window.clearTimeout(this.gestureGuideTimer);
+      this.gestureGuideTimer = null;
+      if (this.dom.gestureGuide) this.dom.gestureGuide.classList.remove('visible');
     }
 
     throwMeat() {
@@ -1906,6 +1984,7 @@
       this.dom.pauseScreen.classList.remove('active');
 
       this.updateHUD();
+      this.showGestureGuide();
     }
 
     togglePause() {
